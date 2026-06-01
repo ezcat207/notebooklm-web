@@ -1691,3 +1691,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 console.log("Background script loaded");
+
+// ========== Import Tests (if needed) ==========
+// To load tests in console, run: await import(chrome.runtime.getURL('test-rpc.js'))
+// Then run: window.testAllRPC()

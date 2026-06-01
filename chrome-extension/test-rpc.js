@@ -441,3 +441,10 @@ if (typeof window !== 'undefined') {
   window.TEST_CONFIG = TEST_CONFIG;
   console.log('✅ RPC Tests loaded. Run: testAllRPC()');
 }
+
+// ES6 Module exports (for import in Service Worker)
+if (typeof self !== 'undefined' && !window) {
+  self.testAllRPC = testAllRPC;
+  self.TEST_CONFIG = TEST_CONFIG;
+  console.log('✅ RPC Tests loaded in Service Worker. Run: testAllRPC()');
+}
