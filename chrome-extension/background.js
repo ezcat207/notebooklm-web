@@ -777,18 +777,38 @@ async function getNotebookSummary(notebookId) {
 /**
  * Get notebook details including sources
  * Python CLI format: [notebook_id, None, [2], None, 0]
+ * Returns: result[0] = notebook_data, where:
+ *   notebook_data[0] = title
+ *   notebook_data[1] = sources array
+ *   sources[i] = [[source_id], title, [metadata...]]
  */
 async function getNotebook(notebookId) {
   const params = [notebookId, null, [2], null, 0];
   const result = await callRpc(RPC_IDS.GET_NOTEBOOK, params, `/notebook/${notebookId}`);
 
-  if (result && Array.isArray(result) && result.length > 1) {
+  debugLog("INFO", "getNotebook", "Raw result", {
+    hasResult: !!result,
+    isArray: Array.isArray(result),
+    length: result?.length,
+    firstItemType: result?.[0] ? typeof result[0] : 'none'
+  });
+
+  if (result && Array.isArray(result) && result.length > 0) {
+    // result[0] is notebook_data (or result itself if not nested)
+    const notebookData = Array.isArray(result[0]) ? result[0] : result;
+
+    debugLog("INFO", "getNotebook", "Parsed notebook data", {
+      title: notebookData[0],
+      sourcesLength: Array.isArray(notebookData[1]) ? notebookData[1].length : 0
+    });
+
     return {
-      title: result[0] || "Untitled",
-      sources: result[1] || [],
+      title: notebookData[0] || "Untitled",
+      sources: notebookData[1] || [],
     };
   }
 
+  debugLog("WARN", "getNotebook", "No valid notebook data found");
   return { title: "Untitled", sources: [] };
 }
 
