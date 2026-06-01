@@ -1194,21 +1194,65 @@ async function createDataTable(notebookId, description, options = {}) {
 }
 
 /**
- * Poll Studio status
+ * Poll Studio status - returns ALL artifacts for the notebook
+ * Python CLI format: [[2], notebook_id, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"']
+ * Returns: Array of all studio artifacts with their status
  */
-async function pollStudioStatus(notebookId, artifactId) {
-  const params = [notebookId, artifactId];
+async function pollStudioStatus(notebookId) {
+  const params = [[2], notebookId, 'NOT artifact.status = "ARTIFACT_STATUS_SUGGESTED"'];
   const result = await callRpc(RPC_IDS.POLL_STUDIO, params, `/notebook/${notebookId}`);
 
-  if (result && Array.isArray(result)) {
-    // Result structure: [status, progress, ...]
-    // status: 1=processing, 2=completed, 3=failed
-    const status = result[0];
-    const progress = result[1] || 0;
+  debugLog("INFO", "pollStudioStatus", "Raw result", {
+    hasResult: !!result,
+    isArray: Array.isArray(result),
+    length: result?.length
+  });
 
+  const artifacts = [];
+  if (result && Array.isArray(result) && result.length > 0) {
+    // Response is an array of artifacts, possibly wrapped
+    const artifactList = Array.isArray(result[0]) ? result[0] : result;
+
+    debugLog("INFO", "pollStudioStatus", "Artifact list", {
+      count: artifactList.length
+    });
+
+    for (const artifactData of artifactList) {
+      if (!Array.isArray(artifactData) || artifactData.length < 3) continue;
+
+      const artifactId = artifactData[0];
+      const title = artifactData[1] || "";
+      const typeCode = artifactData[2];
+
+      // Status is typically at position 3 or 4
+      // 1=processing, 2=completed, 3=failed
+      const status = artifactData[3] || artifactData[4] || 1;
+
+      artifacts.push({
+        id: artifactId,
+        title,
+        type: typeCode,
+        status: status === 2 ? "completed" : status === 3 ? "failed" : "processing",
+      });
+    }
+  }
+
+  debugLog("INFO", "pollStudioStatus", "Parsed artifacts", { count: artifacts.length, artifacts });
+
+  return artifacts;
+}
+
+/**
+ * Helper: Get status of a specific artifact
+ */
+async function getArtifactStatus(notebookId, artifactId) {
+  const allArtifacts = await pollStudioStatus(notebookId);
+  const artifact = allArtifacts.find(a => a.id === artifactId);
+
+  if (artifact) {
     return {
-      status: status === 2 ? "completed" : status === 3 ? "failed" : "processing",
-      progress: Math.round(progress * 100),
+      status: artifact.status,
+      progress: artifact.status === "completed" ? 100 : artifact.status === "processing" ? 50 : 0,
     };
   }
 
@@ -1223,7 +1267,7 @@ async function pollStudioStatus(notebookId, artifactId) {
  */
 async function waitForStudioCompletion(notebookId, artifactId, maxAttempts = 60, interval = 5000) {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const status = await pollStudioStatus(notebookId, artifactId);
+    const status = await getArtifactStatus(notebookId, artifactId);
 
     if (status.status === "completed") {
       return { success: true, artifactId };
@@ -1509,11 +1553,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         case "POLL_STUDIO": {
-          const status = await pollStudioStatus(
-            message.data.notebookId,
-            message.data.artifactId
-          );
-          sendResponse({ success: true, data: status });
+          // If artifactId specified, get status of specific artifact
+          // Otherwise, return all artifacts
+          let data;
+          if (message.data.artifactId) {
+            data = await getArtifactStatus(
+              message.data.notebookId,
+              message.data.artifactId
+            );
+          } else {
+            data = await pollStudioStatus(message.data.notebookId);
+          }
+          sendResponse({ success: true, data });
           break;
         }
 
