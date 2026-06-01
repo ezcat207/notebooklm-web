@@ -339,6 +339,15 @@ async function callRPC(rpcName, params) {
   }
 
   // Fallback: message-based call (if running in popup/content script)
+  // This will fail if running in Service Worker without callRpc function
+  if (typeof self !== 'undefined' && self.constructor.name === 'ServiceWorkerGlobalScope') {
+    throw new Error(
+      'Running in Service Worker but callRpc function not found! ' +
+      'Make sure test-rpc.js is loaded AFTER background.js defines callRpc. ' +
+      'Available functions: ' + Object.keys(self).filter(k => typeof self[k] === 'function').slice(0, 10).join(', ')
+    );
+  }
+
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       {
@@ -449,6 +458,29 @@ function printResults() {
 
   console.log('='.repeat(60) + '\n');
 }
+
+// Startup validation - check required dependencies
+(function validateEnvironment() {
+  const errors = [];
+
+  // Check if we're in Service Worker with required functions
+  if (typeof self !== 'undefined' && self.constructor.name === 'ServiceWorkerGlobalScope') {
+    if (typeof callRpc !== 'function') {
+      errors.push('❌ callRpc function not found in Service Worker');
+    }
+    if (typeof chrome === 'undefined' || !chrome.runtime) {
+      errors.push('❌ chrome.runtime not available');
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('⚠️ Test environment validation FAILED:');
+    errors.forEach(err => console.error('  ' + err));
+    console.error('Available functions:', Object.keys(self).filter(k => typeof self[k] === 'function').slice(0, 20));
+  } else {
+    console.log('✅ Test environment validated');
+  }
+})();
 
 // Export for console usage (works in both browser and Service Worker)
 // Use globalThis which works everywhere
