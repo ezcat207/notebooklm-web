@@ -1083,7 +1083,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               });
             }
           );
-          sendResponse(result);
+          sendResponse({ success: true, data: result });
           break;
         }
 

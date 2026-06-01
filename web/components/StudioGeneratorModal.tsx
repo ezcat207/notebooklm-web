@@ -64,11 +64,16 @@ export default function StudioGeneratorModal({
 
       const result = await batchCreateStudio(notebookIds, options);
 
-      alert(
-        `成功生成 ${result.completed_count} 个，失败 ${result.failed_count} 个`
-      );
+      if (result && typeof result.completed_count !== 'undefined') {
+        alert(
+          `成功生成 ${result.completed_count} 个，失败 ${result.failed_count} 个`
+        );
 
-      if (result.completed_count > 0) {
+        if (result.completed_count > 0) {
+          onClose();
+        }
+      } else {
+        alert("生成请求已发送，请稍后检查笔记本");
         onClose();
       }
     } catch (error) {
