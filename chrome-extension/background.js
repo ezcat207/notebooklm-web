@@ -69,32 +69,106 @@ const RPC_IDS = {
   EXPORT_ARTIFACT: "Krh3pd",
 };
 
-// Studio artifact types
+// Studio artifact types (matches Python CLI constants.py:183-189)
 const STUDIO_TYPES = {
   AUDIO: 1,
-  VIDEO: 2,
-  REPORT: 3,
-  QUIZ: 4,
-  FLASHCARDS: 5,
-  MIND_MAP: 6,
-  SLIDE_DECK: 7,
-  INFOGRAPHIC: 8,
+  REPORT: 2,
+  VIDEO: 3,
+  FLASHCARDS: 4,  // Also Quiz (distinguished by variant code in options)
+  INFOGRAPHIC: 7,
+  SLIDE_DECK: 8,
   DATA_TABLE: 9,
 };
 
-// Audio formats
+// Audio formats (matches Python CLI constants.py)
 const AUDIO_FORMATS = {
-  DEEP_DIVE: 1,
-  BRIEF: 2,
+  BRIEF: 1,
+  DEEP_DIVE: 2,
   CRITIQUE: 3,
   DEBATE: 4,
 };
 
-// Audio lengths
+// Audio lengths (matches Python CLI constants.py)
 const AUDIO_LENGTHS = {
   SHORT: 1,
   DEFAULT: 2,
   LONG: 3,
+};
+
+// Video formats (matches Python CLI constants.py)
+const VIDEO_FORMATS = {
+  EXPLAINER: 1,
+  BRIEF: 2,
+  CINEMATIC: 3,
+};
+
+// Video styles (matches Python CLI constants.py)
+const VIDEO_STYLES = {
+  AUTO_SELECT: 1,
+  CUSTOM: 2,
+  CLASSIC: 3,
+  WHITEBOARD: 4,
+  KAWAII: 5,
+  ANIME: 6,
+  WATERCOLOR: 7,
+  RETRO_PRINT: 8,
+  HERITAGE: 9,
+  PAPER_CRAFT: 10,
+};
+
+// Infographic orientations (matches Python CLI constants.py)
+const INFOGRAPHIC_ORIENTATIONS = {
+  LANDSCAPE: 1,
+  PORTRAIT: 2,
+  SQUARE: 3,
+};
+
+// Infographic detail levels (matches Python CLI constants.py)
+const INFOGRAPHIC_DETAILS = {
+  CONCISE: 1,
+  STANDARD: 2,
+  DETAILED: 3,
+};
+
+// Infographic visual styles (matches Python CLI constants.py)
+const INFOGRAPHIC_STYLES = {
+  AUTO_SELECT: 1,
+  SKETCH_NOTE: 2,
+  PROFESSIONAL: 3,
+  BENTO_GRID: 4,
+  EDITORIAL: 5,
+  INSTRUCTIONAL: 6,
+  BRICKS: 7,
+  CLAY: 8,
+  ANIME: 9,
+  KAWAII: 10,
+  SCIENTIFIC: 11,
+};
+
+// Slide deck formats (matches Python CLI constants.py)
+const SLIDE_DECK_FORMATS = {
+  DETAILED: 1,
+  CONCISE: 2,
+};
+
+// Slide deck lengths (matches Python CLI constants.py)
+const SLIDE_DECK_LENGTHS = {
+  SHORT: 1,
+  MEDIUM: 2,
+  DEFAULT: 3,
+  LONG: 4,
+};
+
+// Flashcard difficulties (matches Python CLI constants.py)
+const FLASHCARD_DIFFICULTIES = {
+  EASY: 1,
+  MEDIUM: 2,
+  HARD: 3,
+};
+
+// Flashcard counts (matches Python CLI constants.py)
+const FLASHCARD_COUNTS = {
+  DEFAULT: 2,
 };
 
 // ========== Auth State ==========
@@ -716,59 +790,237 @@ async function getNotebook(notebookId) {
  * params = [[2], notebook_id, content]
  * content = [None, None, type, sources_nested, None, None, options, ...]
  */
+/**
+ * Create Studio content (Audio, Video, Infographic, etc.)
+ * Supports all 9 artifact types with full parameter control
+ * Matches Python CLI implementation exactly
+ */
 async function createStudio(notebookId, options = {}) {
   const {
     artifactType = STUDIO_TYPES.AUDIO,
-    format = AUDIO_FORMATS.DEEP_DIVE,
-    length = AUDIO_LENGTHS.LONG,
+
+    // Audio options
+    audioFormat = AUDIO_FORMATS.DEEP_DIVE,
+    audioLength = AUDIO_LENGTHS.DEFAULT,
+
+    // Video options
+    videoFormat = VIDEO_FORMATS.EXPLAINER,
+    videoStyle = VIDEO_STYLES.AUTO_SELECT,
+    videoStylePrompt = "",
+
+    // Infographic options
+    infographicOrientation = INFOGRAPHIC_ORIENTATIONS.LANDSCAPE,
+    infographicDetail = INFOGRAPHIC_DETAILS.STANDARD,
+    infographicStyle = INFOGRAPHIC_STYLES.AUTO_SELECT,
+
+    // Slide deck options
+    slideDeckFormat = SLIDE_DECK_FORMATS.DETAILED,
+    slideDeckLength = SLIDE_DECK_LENGTHS.DEFAULT,
+
+    // Report options
+    reportFormat = "Briefing Doc",  // "Briefing Doc", "Study Guide", "Blog Post", "Create Your Own"
+    reportCustomPrompt = "",
+
+    // Quiz options
+    quizQuestionCount = 2,
+    quizDifficulty = 2,
+
+    // Flashcard options
+    flashcardDifficulty = FLASHCARD_DIFFICULTIES.MEDIUM,
+
+    // Data table options
+    dataTableDescription = "",
+
+    // Common options
+    language = "en",
+    focus = "",
+    sourceIds = null,  // If null, use all sources
   } = options;
 
-  // Get notebook sources
+  // Get notebook sources if not specified
   const notebook = await getNotebook(notebookId);
 
   if (!notebook.sources || notebook.sources.length === 0) {
     throw new Error("Notebook has no sources. Add sources before creating studio content.");
   }
 
-  // Extract source IDs and build nested format: [[[id1]], [[id2]], ...]
-  const sourceIds = notebook.sources.map(s => Array.isArray(s) && s.length > 2 ? s[2] : null).filter(Boolean);
-  const sourcesNested = sourceIds.map(id => [[id]]);
+  // Extract source IDs and build formats
+  let finalSourceIds = sourceIds;
+  if (!finalSourceIds) {
+    finalSourceIds = notebook.sources.map(s => Array.isArray(s) && s.length > 2 ? s[2] : null).filter(Boolean);
+  }
 
-  debugLog("INFO", "Studio", `Creating studio content with ${sourceIds.length} sources`, {
+  if (finalSourceIds.length === 0) {
+    throw new Error("No valid sources found");
+  }
+
+  // Build source IDs in nested format: [[[id1]], [[id2]], ...]
+  const sourcesNested = finalSourceIds.map(id => [[id]]);
+
+  // Build source IDs in simple format: [[id1], [id2], ...]
+  const sourcesSimple = finalSourceIds.map(id => [id]);
+
+  debugLog("INFO", "Studio", `Creating studio content with ${finalSourceIds.length} sources`, {
     artifactType,
-    sourceIds: sourceIds.length
+    sourceCount: finalSourceIds.length
   });
 
   // Build content array based on artifact type
   let content;
 
   if (artifactType === STUDIO_TYPES.AUDIO) {
-    // Audio format: [None, None, type, sources, None, None, audio_options]
+    // Audio format (studio.py:192-201)
+    // params = [[2], notebook_id, [None, None, 1, sources_nested, None, None, audio_options]]
     const audioOptions = [
-      null,  // focus_prompt
-      [null, length, null, sourcesNested.map(s => s[0]), "en", null, format],  // format options
+      null,
+      [focus || null, audioLength, null, sourcesSimple, language, null, audioFormat],
     ];
+    content = [null, null, STUDIO_TYPES.AUDIO, sourcesNested, null, null, audioOptions];
 
-    content = [null, null, artifactType, sourcesNested, null, null, audioOptions];
-  } else if (artifactType === STUDIO_TYPES.INFOGRAPHIC) {
-    // Infographic format: [None, None, type, sources, ...10 nulls..., infographic_options]
-    const infographicOptions = [[null, "en", null, 1, 2, 1]];  // Default: landscape, standard, auto-style
+  } else if (artifactType === STUDIO_TYPES.VIDEO) {
+    // Video format (studio.py:252-280)
+    // Cinematic format omits visual_style_code
+    const innerOptions = [sourcesSimple, language, focus || null, null, videoFormat];
+    if (videoFormat !== VIDEO_FORMATS.CINEMATIC) {
+      innerOptions.push(videoStyle);
+      if (videoStylePrompt) {
+        innerOptions.push(videoStylePrompt);
+      }
+    }
+    const videoOptions = [null, null, innerOptions];
 
     content = [
-      null, null, artifactType, sourcesNested,
-      null, null, null, null, null, null, null, null, null, null,  // 10 nulls
-      infographicOptions
+      null, null, STUDIO_TYPES.VIDEO, sourcesNested,
+      null, null, null, null,
+      videoOptions,  // Position 8
     ];
+
+  } else if (artifactType === STUDIO_TYPES.INFOGRAPHIC) {
+    // Infographic format (studio.py:666-695)
+    // 15 elements with options at position 14
+    const infographicOptions = [
+      [focus || null, language, null, infographicOrientation, infographicDetail, infographicStyle]
+    ];
+
+    content = [
+      null, null, STUDIO_TYPES.INFOGRAPHIC, sourcesNested,
+      null, null, null, null, null, null, null, null, null, null,  // 10 nulls (positions 4-13)
+      infographicOptions,  // Position 14
+    ];
+
+  } else if (artifactType === STUDIO_TYPES.SLIDE_DECK) {
+    // Slide deck format (studio.py:743-765)
+    // 17 elements with options at position 16
+    const slideDeckOptions = [[focus || null, language, slideDeckFormat, slideDeckLength]];
+
+    content = [
+      null, null, STUDIO_TYPES.SLIDE_DECK, sourcesNested,
+      null, null, null, null, null, null, null, null, null, null, null, null,  // 12 nulls (positions 4-15)
+      slideDeckOptions,  // Position 16
+    ];
+
+  } else if (artifactType === STUDIO_TYPES.REPORT) {
+    // Report format (studio.py:813-884)
+    // Map report format to config
+    const formatConfigs = {
+      "Briefing Doc": {
+        title: "Briefing Doc",
+        description: "Key insights and important quotes",
+        prompt: "Create a comprehensive briefing document that includes an Executive Summary, detailed analysis of key themes, important quotes with context, and actionable insights.",
+      },
+      "Study Guide": {
+        title: "Study Guide",
+        description: "Short-answer quiz, essay questions, glossary",
+        prompt: "Create a comprehensive study guide that includes key concepts, short-answer practice questions, essay prompts for deeper exploration, and a glossary of important terms.",
+      },
+      "Blog Post": {
+        title: "Blog Post",
+        description: "Insightful takeaways in readable article format",
+        prompt: "Write an engaging blog post that presents the key insights in an accessible, reader-friendly format. Include an attention-grabbing introduction, well-organized sections, and a compelling conclusion with takeaways.",
+      },
+      "Create Your Own": {
+        title: "Custom Report",
+        description: "Custom format",
+        prompt: reportCustomPrompt || "Create a report based on the provided sources.",
+      },
+    };
+
+    const config = formatConfigs[reportFormat] || formatConfigs["Briefing Doc"];
+
+    const reportOptions = [
+      null,
+      [config.title, config.description, null, sourcesSimple, language, config.prompt, null, true],
+    ];
+
+    content = [
+      null, null, STUDIO_TYPES.REPORT, sourcesNested,
+      null, null, null,
+      reportOptions,  // Position 7
+    ];
+
+  } else if (artifactType === STUDIO_TYPES.FLASHCARDS) {
+    // Flashcards format (studio.py:931-957)
+    // Type 4 with variant code 1
+    const flashcardOptions = [
+      null,
+      [
+        1,  // Variant code 1 = flashcards (vs 2 = quiz)
+        null,
+        focus || null,
+        null, null, null,
+        [flashcardDifficulty, FLASHCARD_COUNTS.DEFAULT],
+      ],
+    ];
+
+    content = [
+      null, null, STUDIO_TYPES.FLASHCARDS, sourcesNested,
+      null, null, null, null, null,  // 5 nulls (positions 4-8)
+      flashcardOptions,  // Position 9
+    ];
+
+  } else if (artifactType === 4 && options.isQuiz) {
+    // Quiz format (studio.py:1007-1035)
+    // Type 4 with variant code 2
+    const quizOptions = [
+      null,
+      [
+        2,  // Variant code 2 = quiz (vs 1 = flashcards)
+        null,
+        focus || null,
+        null, null, null, null,
+        [quizQuestionCount, quizDifficulty],
+      ],
+    ];
+
+    content = [
+      null, null, STUDIO_TYPES.FLASHCARDS, sourcesNested,  // Type 4 is shared
+      null, null, null, null, null,  // 5 nulls (positions 4-8)
+      quizOptions,  // Position 9
+    ];
+
+  } else if (artifactType === STUDIO_TYPES.DATA_TABLE) {
+    // Data table format (studio.py:1085-1109)
+    // 19 elements with options at position 18
+    const dataTableOptions = [null, [dataTableDescription, language]];
+
+    content = [
+      null, null, STUDIO_TYPES.DATA_TABLE, sourcesNested,
+      null, null, null, null, null, null, null, null, null, null, null, null, null, null,  // 14 nulls (positions 4-17)
+      dataTableOptions,  // Position 18
+    ];
+
   } else {
-    // Generic format for other types (Video, Quiz, etc.)
-    // [None, None, type, sources, None, None, None]
-    content = [null, null, artifactType, sourcesNested, null, null, null];
+    throw new Error(`Unsupported artifact type: ${artifactType}`);
   }
 
   // Python CLI format: [[2], notebook_id, content]
   const params = [[2], notebookId, content];
 
-  debugLog("INFO", "Studio", "CREATE_STUDIO params", { params });
+  debugLog("INFO", "Studio", "CREATE_STUDIO params", {
+    artifactType,
+    paramsLength: params.length,
+    contentLength: content.length
+  });
 
   const result = await callRpc(RPC_IDS.CREATE_STUDIO, params, `/notebook/${notebookId}`);
 
@@ -783,6 +1035,115 @@ async function createStudio(notebookId, options = {}) {
   }
 
   throw new Error("Failed to create studio content");
+}
+
+/**
+ * Helper function: Create Audio Overview
+ */
+async function createAudio(notebookId, options = {}) {
+  return createStudio(notebookId, {
+    artifactType: STUDIO_TYPES.AUDIO,
+    audioFormat: options.format || AUDIO_FORMATS.DEEP_DIVE,
+    audioLength: options.length || AUDIO_LENGTHS.DEFAULT,
+    language: options.language || "en",
+    focus: options.focus || "",
+    sourceIds: options.sourceIds,
+  });
+}
+
+/**
+ * Helper function: Create Video Overview
+ */
+async function createVideo(notebookId, options = {}) {
+  return createStudio(notebookId, {
+    artifactType: STUDIO_TYPES.VIDEO,
+    videoFormat: options.format || VIDEO_FORMATS.EXPLAINER,
+    videoStyle: options.style || VIDEO_STYLES.AUTO_SELECT,
+    videoStylePrompt: options.stylePrompt || "",
+    language: options.language || "en",
+    focus: options.focus || "",
+    sourceIds: options.sourceIds,
+  });
+}
+
+/**
+ * Helper function: Create Infographic
+ */
+async function createInfographic(notebookId, options = {}) {
+  return createStudio(notebookId, {
+    artifactType: STUDIO_TYPES.INFOGRAPHIC,
+    infographicOrientation: options.orientation || INFOGRAPHIC_ORIENTATIONS.LANDSCAPE,
+    infographicDetail: options.detail || INFOGRAPHIC_DETAILS.STANDARD,
+    infographicStyle: options.style || INFOGRAPHIC_STYLES.AUTO_SELECT,
+    language: options.language || "en",
+    focus: options.focus || "",
+    sourceIds: options.sourceIds,
+  });
+}
+
+/**
+ * Helper function: Create Slide Deck
+ */
+async function createSlides(notebookId, options = {}) {
+  return createStudio(notebookId, {
+    artifactType: STUDIO_TYPES.SLIDE_DECK,
+    slideDeckFormat: options.format || SLIDE_DECK_FORMATS.DETAILED,
+    slideDeckLength: options.length || SLIDE_DECK_LENGTHS.DEFAULT,
+    language: options.language || "en",
+    focus: options.focus || "",
+    sourceIds: options.sourceIds,
+  });
+}
+
+/**
+ * Helper function: Create Report
+ */
+async function createReport(notebookId, options = {}) {
+  return createStudio(notebookId, {
+    artifactType: STUDIO_TYPES.REPORT,
+    reportFormat: options.format || "Briefing Doc",
+    reportCustomPrompt: options.customPrompt || "",
+    language: options.language || "en",
+    sourceIds: options.sourceIds,
+  });
+}
+
+/**
+ * Helper function: Create Quiz
+ */
+async function createQuiz(notebookId, options = {}) {
+  return createStudio(notebookId, {
+    artifactType: 4,
+    isQuiz: true,
+    quizQuestionCount: options.questionCount || 2,
+    quizDifficulty: options.difficulty || 2,
+    focus: options.focus || "",
+    sourceIds: options.sourceIds,
+  });
+}
+
+/**
+ * Helper function: Create Flashcards
+ */
+async function createFlashcards(notebookId, options = {}) {
+  return createStudio(notebookId, {
+    artifactType: STUDIO_TYPES.FLASHCARDS,
+    flashcardDifficulty: options.difficulty || FLASHCARD_DIFFICULTIES.MEDIUM,
+    focus: options.focus || "",
+    sourceIds: options.sourceIds,
+  });
+}
+
+/**
+ * Helper function: Create Data Table
+ */
+async function createDataTable(notebookId, description, options = {}) {
+  return createStudio(notebookId, {
+    artifactType: STUDIO_TYPES.DATA_TABLE,
+    dataTableDescription: description,
+    language: options.language || "en",
+    sourceIds: options.sourceIds,
+  });
 }
 
 /**

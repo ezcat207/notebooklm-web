@@ -25,16 +25,48 @@ export interface NotebookSummary {
 }
 
 export interface StudioOptions {
-  artifactType?: number;
+  // Core options
+  artifactType?: number;  // 1=Audio, 2=Report, 3=Video, 4=Flashcards/Quiz, 7=Infographic, 8=Slide Deck, 9=Data Table
+  language?: string;      // BCP-47 language code (default: "en")
+  focus?: string;         // Optional focus topic/prompt
+  sourceIds?: string[];   // Optional specific source IDs (defaults to all)
+
+  // Audio options (artifactType = 1)
+  audioFormat?: number;   // 1=Brief, 2=Deep Dive, 3=Critique, 4=Debate
+  audioLength?: number;   // 1=Short, 2=Default, 3=Long
+
+  // Video options (artifactType = 3)
+  videoFormat?: number;       // 1=Explainer, 2=Brief, 3=Cinematic
+  videoStyle?: number;        // 1=Auto Select, 2=Custom, 3=Classic, 4=Whiteboard, 5=Kawaii, 6=Anime, 7=Watercolor, 8=Retro Print, 9=Heritage, 10=Paper Craft
+  videoStylePrompt?: string;  // Custom visual style description (for videoStyle=2)
+
+  // Infographic options (artifactType = 7)
+  infographicOrientation?: number;  // 1=Landscape, 2=Portrait, 3=Square
+  infographicDetail?: number;       // 1=Concise, 2=Standard, 3=Detailed
+  infographicStyle?: number;        // 1=Auto Select, 2=Sketch Note, 3=Professional, 4=Bento Grid, 5=Editorial, 6=Instructional, 7=Bricks, 8=Clay, 9=Anime, 10=Kawaii, 11=Scientific
+
+  // Slide Deck options (artifactType = 8)
+  slideDeckFormat?: number;  // 1=Detailed, 2=Concise
+  slideDeckLength?: number;  // 1=Short, 2=Medium, 3=Default, 4=Long
+
+  // Report options (artifactType = 2)
+  reportFormat?: string;        // "Briefing Doc", "Study Guide", "Blog Post", "Create Your Own"
+  reportCustomPrompt?: string;  // Custom prompt for "Create Your Own" format
+
+  // Quiz options (artifactType = 4, isQuiz = true)
+  isQuiz?: boolean;          // Set to true for quiz, false/undefined for flashcards
+  quizQuestionCount?: number;  // Number of quiz questions (default: 2)
+  quizDifficulty?: number;     // Quiz difficulty level (default: 2)
+
+  // Flashcard options (artifactType = 4, isQuiz = false/undefined)
+  flashcardDifficulty?: number;  // 1=Easy, 2=Medium, 3=Hard
+
+  // Data Table options (artifactType = 9)
+  dataTableDescription?: string;  // Required: description of the data table to create
+
+  // Legacy/deprecated (kept for backwards compatibility)
   format?: number;
   length?: number;
-  // Audio specific
-  audioFormat?: "deep_dive" | "brief" | "critique" | "debate";
-  audioLength?: "short" | "default" | "long";
-  // Video specific
-  videoFormat?: "explainer" | "brief";
-  videoStyle?: string;
-  // Other options
   customInstructions?: string;
 }
 
@@ -141,7 +173,7 @@ export const PRESET_WORKFLOWS: Workflow[] = [
         id: "audio",
         name: "生成音频 Overview",
         type: "studio",
-        params: { artifactType: 1, format: 1, length: 3 },
+        params: { artifactType: 1, audioFormat: 2, audioLength: 3 },
         enabled: true,
       },
       {
@@ -169,14 +201,14 @@ export const PRESET_WORKFLOWS: Workflow[] = [
         id: "report",
         name: "生成博客文章",
         type: "studio",
-        params: { artifactType: 3 },
+        params: { artifactType: 2, reportFormat: "Blog Post" },
         enabled: true,
       },
       {
         id: "infographic",
         name: "生成信息图",
         type: "studio",
-        params: { artifactType: 8 },
+        params: { artifactType: 7, infographicStyle: 3 },
         enabled: true,
       },
       {
@@ -204,14 +236,14 @@ export const PRESET_WORKFLOWS: Workflow[] = [
         id: "quiz",
         name: "生成测验",
         type: "studio",
-        params: { artifactType: 4 },
+        params: { artifactType: 4, isQuiz: true, quizQuestionCount: 2, quizDifficulty: 2 },
         enabled: true,
       },
       {
         id: "flashcards",
         name: "生成闪卡",
         type: "studio",
-        params: { artifactType: 5 },
+        params: { artifactType: 4, flashcardDifficulty: 2 },
         enabled: true,
       },
       {
