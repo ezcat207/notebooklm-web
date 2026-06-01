@@ -15,24 +15,37 @@ Manifest V3 的 CSP 策略禁止 `eval()`，所以不能用之前的方法。
 
 ### 步骤 2: 加载测试文件
 
+**注意：因为 Service Worker 是 module 类型，用 `import()` 而不是 `importScripts()`**
+
 在 Console 中运行：
 
 ```javascript
-importScripts(chrome.runtime.getURL('test-rpc.js'));
+import(chrome.runtime.getURL('test-rpc.js')).then(() => {
+  console.log('✅ Tests loaded!');
+  testAllRPC();
+});
 ```
 
-### 步骤 3: 运行测试
+或者分步运行：
 
 ```javascript
+// 1. 先加载
+await import(chrome.runtime.getURL('test-rpc.js'));
+
+// 2. 再运行
 testAllRPC();
 ```
+
+### 步骤 3: 查看测试结果
+
+测试会自动运行，查看 Console 输出。
 
 ## 📝 完整流程示例
 
 ```javascript
-// 1. 加载测试
-importScripts(chrome.runtime.getURL('test-rpc.js'));
-// 输出: ✅ RPC Tests loaded in Service Worker. Run: testAllRPC()
+// 1. 加载测试 (Module Service Worker)
+await import(chrome.runtime.getURL('test-rpc.js'));
+// 输出: ✅ RPC Tests loaded. Run: testAllRPC()
 
 // 2. 运行所有测试
 testAllRPC();
@@ -46,7 +59,7 @@ testCreateStudioAudio({ sources: [...] });
 ## ❌ 不要用这些方法（会报错）
 
 ```javascript
-// ❌ 错误：会报 CSP 错误
+// ❌ 错误：会报 CSP 错误（eval 被禁止）
 fetch(chrome.runtime.getURL('test-rpc.js'))
   .then(r => r.text())
   .then(code => eval(code));
@@ -56,20 +69,36 @@ eval('console.log("test")');
 
 // ❌ 错误：new Function 也被禁止
 new Function('console.log("test")')();
+
+// ❌ 错误：importScripts 不支持 module 类型
+importScripts(chrome.runtime.getURL('test-rpc.js'));
+// TypeError: Module scripts don't support importScripts()
 ```
 
-## ✅ 为什么 importScripts() 可以？
+## ✅ 为什么要用 import()？
 
-- `importScripts()` 是 Service Worker 的标准 API
-- 不违反 CSP 策略
-- 专门用来加载额外的脚本文件
+我们的 Service Worker 配置是：
+```json
+{
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"    ← 这个导致不能用 importScripts()
+  }
+}
+```
 
-## 🔍 如果 importScripts() 也不行
+**Module 类型的 Service Worker：**
+- ✅ 支持 `import()` (动态导入)
+- ✅ 支持 `import ... from` (静态导入)
+- ❌ **不支持** `importScripts()` (旧 API)
+- ❌ **不支持** `eval()` (CSP 限制)
 
-那说明 Service Worker 类型是 "module"。改用动态 import：
-
+**正确方法：**
 ```javascript
-// 动态 import (适用于 module 类型的 Service Worker)
+// ✅ 动态 import (异步)
+await import(chrome.runtime.getURL('test-rpc.js'));
+
+// ✅ 或带回调
 import(chrome.runtime.getURL('test-rpc.js')).then(() => {
   testAllRPC();
 });

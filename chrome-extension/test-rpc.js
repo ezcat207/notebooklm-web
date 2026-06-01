@@ -435,16 +435,19 @@ function printResults() {
   console.log('='.repeat(60) + '\n');
 }
 
-// Export for console usage
-if (typeof window !== 'undefined') {
-  window.testAllRPC = testAllRPC;
-  window.TEST_CONFIG = TEST_CONFIG;
+// Export for console usage (works in both browser and Service Worker)
+// Use globalThis which works everywhere
+if (typeof globalThis !== 'undefined') {
+  globalThis.testAllRPC = testAllRPC;
+  globalThis.TEST_CONFIG = TEST_CONFIG;
+  globalThis.testGetNotebook = testGetNotebook;
+  globalThis.testCreateStudioAudio = testCreateStudioAudio;
+  globalThis.testPollStudio = testPollStudio;
   console.log('✅ RPC Tests loaded. Run: testAllRPC()');
 }
 
-// ES6 Module exports (for import in Service Worker)
-if (typeof self !== 'undefined' && !window) {
+// Also attach to self for Service Worker compatibility
+if (typeof self !== 'undefined') {
   self.testAllRPC = testAllRPC;
   self.TEST_CONFIG = TEST_CONFIG;
-  console.log('✅ RPC Tests loaded in Service Worker. Run: testAllRPC()');
 }
