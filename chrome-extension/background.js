@@ -693,7 +693,28 @@ async function getNotebookSummary(notebookId) {
 }
 
 /**
+ * Get notebook details including sources
+ */
+async function getNotebook(notebookId) {
+  const params = [notebookId, [2]];
+  const result = await callRpc(RPC_IDS.GET_NOTEBOOK, params, `/notebook/${notebookId}`);
+
+  if (result && Array.isArray(result) && result.length > 1) {
+    return {
+      title: result[0] || "Untitled",
+      sources: result[1] || [],
+    };
+  }
+
+  return { title: "Untitled", sources: [] };
+}
+
+/**
  * Create Studio content (Audio, Video, Infographic, etc.)
+ *
+ * CRITICAL: Matches Python CLI format exactly:
+ * params = [[2], notebook_id, content]
+ * content = [None, None, type, sources_nested, None, None, options, ...]
  */
 async function createStudio(notebookId, options = {}) {
   const {
@@ -702,36 +723,62 @@ async function createStudio(notebookId, options = {}) {
     length = AUDIO_LENGTHS.LONG,
   } = options;
 
-  // Build params based on artifact type
-  let params;
+  // Get notebook sources
+  const notebook = await getNotebook(notebookId);
+
+  if (!notebook.sources || notebook.sources.length === 0) {
+    throw new Error("Notebook has no sources. Add sources before creating studio content.");
+  }
+
+  // Extract source IDs and build nested format: [[[id1]], [[id2]], ...]
+  const sourceIds = notebook.sources.map(s => Array.isArray(s) && s.length > 2 ? s[2] : null).filter(Boolean);
+  const sourcesNested = sourceIds.map(id => [[id]]);
+
+  debugLog("INFO", "Studio", `Creating studio content with ${sourceIds.length} sources`, {
+    artifactType,
+    sourceIds: sourceIds.length
+  });
+
+  // Build content array based on artifact type
+  let content;
 
   if (artifactType === STUDIO_TYPES.AUDIO) {
-    params = [
-      notebookId,
-      [
-        artifactType,
-        null,
-        [format, length],  // Audio format and length
-      ],
+    // Audio format: [None, None, type, sources, None, None, audio_options]
+    const audioOptions = [
+      null,  // focus_prompt
+      [null, length, null, sourcesNested.map(s => s[0]), "en", null, format],  // format options
+    ];
+
+    content = [null, null, artifactType, sourcesNested, null, null, audioOptions];
+  } else if (artifactType === STUDIO_TYPES.INFOGRAPHIC) {
+    // Infographic format: [None, None, type, sources, ...10 nulls..., infographic_options]
+    const infographicOptions = [[null, "en", null, 1, 2, 1]];  // Default: landscape, standard, auto-style
+
+    content = [
+      null, null, artifactType, sourcesNested,
+      null, null, null, null, null, null, null, null, null, null,  // 10 nulls
+      infographicOptions
     ];
   } else {
-    // Generic params for other types
-    params = [
-      notebookId,
-      [
-        artifactType,
-        null,
-        null,
-      ],
-    ];
+    // Generic format for other types (Video, Quiz, etc.)
+    // [None, None, type, sources, None, None, None]
+    content = [null, null, artifactType, sourcesNested, null, null, null];
   }
+
+  // Python CLI format: [[2], notebook_id, content]
+  const params = [[2], notebookId, content];
+
+  debugLog("INFO", "Studio", "CREATE_STUDIO params", { params });
 
   const result = await callRpc(RPC_IDS.CREATE_STUDIO, params, `/notebook/${notebookId}`);
 
   if (result && Array.isArray(result) && result.length > 0) {
+    const artifactId = result[0];
+    debugLog("INFO", "Studio", `Studio content created: ${artifactId}`);
+
     return {
       success: true,
-      artifactId: result[0],
+      artifactId: artifactId,
     };
   }
 
