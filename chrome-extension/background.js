@@ -768,9 +768,10 @@ async function getNotebookSummary(notebookId) {
 
 /**
  * Get notebook details including sources
+ * Python CLI format: [notebook_id, None, [2], None, 0]
  */
 async function getNotebook(notebookId) {
-  const params = [notebookId, [2]];
+  const params = [notebookId, null, [2], null, 0];
   const result = await callRpc(RPC_IDS.GET_NOTEBOOK, params, `/notebook/${notebookId}`);
 
   if (result && Array.isArray(result) && result.length > 1) {
