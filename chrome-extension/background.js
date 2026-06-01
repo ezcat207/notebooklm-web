@@ -874,10 +874,28 @@ async function createStudio(notebookId, options = {}) {
   }
 
   // Extract source IDs and build formats
+  // Source structure: [[id], title, [metadata...], [null, 2]]
+  // source_id is at src[0][0] OR src[2] (depending on structure)
   let finalSourceIds = sourceIds;
   if (!finalSourceIds) {
-    finalSourceIds = notebook.sources.map(s => Array.isArray(s) && s.length > 2 ? s[2] : null).filter(Boolean);
+    finalSourceIds = notebook.sources.map(s => {
+      if (!Array.isArray(s) || s.length < 3) return null;
+
+      // Try src[0][0] first (nested ID format)
+      if (Array.isArray(s[0]) && s[0].length > 0) {
+        return s[0][0];
+      }
+
+      // Fallback to src[2] (direct ID format)
+      return s[2];
+    }).filter(Boolean);
   }
+
+  debugLog("INFO", "Studio", "Extracted source IDs", {
+    sourceCount: notebook.sources.length,
+    extractedIds: finalSourceIds.length,
+    ids: finalSourceIds
+  });
 
   if (finalSourceIds.length === 0) {
     throw new Error("No valid sources found");
