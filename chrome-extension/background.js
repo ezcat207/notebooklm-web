@@ -1639,6 +1639,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
         }
 
+        // ========== Test Support ==========
+        case "RPC_CALL": {
+          // Direct RPC call for integration tests
+          // Usage: { action: 'RPC_CALL', data: { rpcName: 'wXbhsf', params: [...] } }
+          const { rpcName, params } = message.data;
+          debugLog("INFO", "RPC_CALL", `Test calling: ${rpcName}`, { params });
+
+          try {
+            const result = await makeRPCCall(rpcName, params);
+            sendResponse({ success: true, data: result });
+          } catch (error) {
+            debugLog("ERROR", "RPC_CALL", `Failed: ${rpcName}`, {
+              error: error.message,
+              params,
+            });
+            sendResponse({ success: false, error: error.message });
+          }
+          break;
+        }
+
         default:
           sendResponse({
             success: false,
