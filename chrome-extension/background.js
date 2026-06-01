@@ -1,5 +1,15 @@
 // background.js - Chrome Extension Service Worker for Notebook and Batch
 
+// ========== Load Test Suite (for development/debugging) ==========
+// This loads test-rpc.js at service worker startup
+// Tests are available via: testAllRPC() in console
+try {
+  importScripts('test-rpc.js');
+  console.log('✅ Test suite loaded. Run testAllRPC() to test all RPC calls.');
+} catch (error) {
+  console.warn('⚠️ Test suite not loaded:', error.message);
+}
+
 // ========== Constants ==========
 const BASE_URL = "https://notebooklm.google.com";
 const BATCHEXECUTE_URL = `${BASE_URL}/_/LabsTailwindUi/data/batchexecute`;
