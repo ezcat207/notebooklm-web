@@ -2,6 +2,9 @@
 
 > 批量导入导出 NotebookLM 内容，无需安装任何命令行工具。只需安装 Chrome 插件，打开网页即可开始。
 
+🔗 **GitHub**: https://github.com/ezcat207/notebooklm-web
+🚀 **状态**: ✅ MVP 完成，已测试可用
+
 ## 项目概述
 
 **Notebook and Batch** 是一个 Chrome 扩展 + Web UI 工具，让用户能够批量操作 Google NotebookLM，无需安装 Python 或 CLI 工具。
