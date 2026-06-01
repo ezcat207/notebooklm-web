@@ -625,16 +625,23 @@ async function listNotebooks() {
 
 /**
  * Create a new notebook
+ * Python CLI format: [title, None, None, [2], [1, None, None, None, None, None, None, None, None, None, [1]]]
  */
 async function createNotebook(title, description = "") {
-  const params = [title, description || null];
+  const params = [
+    title,
+    null,
+    null,
+    [2],
+    [1, null, null, null, null, null, null, null, null, null, [1]]
+  ];
   const result = await callRpc(RPC_IDS.CREATE_NOTEBOOK, params);
 
-  // Result should contain notebook ID
-  if (result && Array.isArray(result) && result.length > 0) {
+  // Result structure: [title, null, notebook_id, ...]
+  if (result && Array.isArray(result) && result.length >= 3) {
     return {
-      id: result[0],
-      title: title,
+      id: result[2],  // notebook_id is at index 2
+      title: result[0] || title,
     };
   }
 
@@ -732,10 +739,11 @@ async function addTextSource(notebookId, text, title = "") {
 
 /**
  * Delete source from notebook
+ * Python CLI format: [[[source_id]], [2]]
  */
 async function deleteSource(notebookId, sourceId) {
-  const params = [notebookId, sourceId];
-  await callRpc(RPC_IDS.DELETE_SOURCE, params, `/notebook/${notebookId}`);
+  const params = [[[sourceId]], [2]];
+  await callRpc(RPC_IDS.DELETE_SOURCE, params);
   return { success: true };
 }
 
@@ -1290,18 +1298,20 @@ async function downloadArtifact(notebookId, artifactId, filename) {
 
 /**
  * Delete notebook
+ * Python CLI format: [[notebook_id], [2]]
  */
 async function deleteNotebook(notebookId) {
-  const params = [notebookId];
-  await callRpc(RPC_IDS.DELETE_NOTEBOOK, params, `/notebook/${notebookId}`);
+  const params = [[notebookId], [2]];
+  await callRpc(RPC_IDS.DELETE_NOTEBOOK, params);
   return { success: true };
 }
 
 /**
  * Rename notebook
+ * Python CLI format: [notebook_id, [[None, None, None, [None, new_title]]]]
  */
 async function renameNotebook(notebookId, newTitle) {
-  const params = [notebookId, newTitle];
+  const params = [notebookId, [[null, null, null, [null, newTitle]]]];
   await callRpc(RPC_IDS.RENAME_NOTEBOOK, params, `/notebook/${notebookId}`);
   return { success: true };
 }
