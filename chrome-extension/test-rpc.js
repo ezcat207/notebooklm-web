@@ -172,13 +172,21 @@ async function testGetSummary() {
   try {
     const result = await callRPC('VfAZjd', [TEST_CONFIG.testNotebookId, [2]]);
 
+    // Debug: log actual result structure
+    console.log('GET_SUMMARY result:', JSON.stringify(result, null, 2).substring(0, 500));
+    console.log('result type:', typeof result);
+    console.log('result[0] type:', typeof result?.[0]);
+    console.log('result[0][0] type:', typeof result?.[0]?.[0]);
+
     if (!Array.isArray(result)) throw new Error('Result is not an array');
     if (!Array.isArray(result[0])) throw new Error('result[0] is not an array');
 
     const summary = result[0][0];
     const suggestedTopics = Array.isArray(result[1]) ? result[1][0] : null;
 
-    if (typeof summary !== 'string') throw new Error('Summary is not a string');
+    if (typeof summary !== 'string') {
+      throw new Error(`Summary is not a string (got ${typeof summary}). result structure: ${JSON.stringify(result).substring(0, 200)}`);
+    }
 
     logTest('GET_SUMMARY', 'PASS', `Summary length: ${summary.length} chars`);
     return { summary, suggestedTopics };
@@ -238,10 +246,17 @@ async function testCreateStudioAudio(notebookData) {
 
     const result = await callRPC('R7cb6c', [[2], TEST_CONFIG.testNotebookId, content]);
 
+    // Debug: log actual result structure
+    console.log('CREATE_STUDIO_AUDIO result:', JSON.stringify(result, null, 2).substring(0, 500));
+    console.log('result type:', typeof result);
+    console.log('result[0] type:', typeof result?.[0]);
+
     if (!Array.isArray(result)) throw new Error('Result is not an array');
 
     const artifactId = result[0];
-    if (typeof artifactId !== 'string') throw new Error('Artifact ID is not a string');
+    if (typeof artifactId !== 'string') {
+      throw new Error(`Artifact ID is not a string (got ${typeof artifactId}). result: ${JSON.stringify(result).substring(0, 200)}`);
+    }
 
     logTest('CREATE_STUDIO_AUDIO', 'PASS', `Created: ${artifactId}`);
     return artifactId;
@@ -280,10 +295,17 @@ async function testCreateStudioInfographic(notebookData) {
 
     const result = await callRPC('R7cb6c', [[2], TEST_CONFIG.testNotebookId, content]);
 
+    // Debug: log actual result structure
+    console.log('CREATE_STUDIO_INFOGRAPHIC result:', JSON.stringify(result, null, 2).substring(0, 500));
+    console.log('result type:', typeof result);
+    console.log('result[0] type:', typeof result?.[0]);
+
     if (!Array.isArray(result)) throw new Error('Result is not an array');
 
     const artifactId = result[0];
-    if (typeof artifactId !== 'string') throw new Error('Artifact ID is not a string');
+    if (typeof artifactId !== 'string') {
+      throw new Error(`Artifact ID is not a string (got ${typeof artifactId}). result: ${JSON.stringify(result).substring(0, 200)}`);
+    }
 
     logTest('CREATE_STUDIO_INFOGRAPHIC', 'PASS', `Created: ${artifactId}`);
     return artifactId;
