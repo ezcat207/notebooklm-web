@@ -15,24 +15,20 @@ Manifest V3 的 CSP 策略禁止 `eval()`，所以不能用之前的方法。
 
 ### 步骤 2: 加载测试文件
 
-**注意：因为 Service Worker 是 module 类型，用 `import()` 而不是 `importScripts()`**
-
 在 Console 中运行：
 
 ```javascript
-import(chrome.runtime.getURL('test-rpc.js')).then(() => {
-  console.log('✅ Tests loaded!');
-  testAllRPC();
-});
+importScripts(chrome.runtime.getURL('test-rpc.js'));
 ```
 
-或者分步运行：
+你应该看到：
+```
+✅ RPC Tests loaded. Run: testAllRPC()
+```
+
+### 步骤 3: 运行测试
 
 ```javascript
-// 1. 先加载
-await import(chrome.runtime.getURL('test-rpc.js'));
-
-// 2. 再运行
 testAllRPC();
 ```
 
@@ -43,8 +39,8 @@ testAllRPC();
 ## 📝 完整流程示例
 
 ```javascript
-// 1. 加载测试 (Module Service Worker)
-await import(chrome.runtime.getURL('test-rpc.js'));
+// 1. 加载测试
+importScripts(chrome.runtime.getURL('test-rpc.js'));
 // 输出: ✅ RPC Tests loaded. Run: testAllRPC()
 
 // 2. 运行所有测试
@@ -70,38 +66,32 @@ eval('console.log("test")');
 // ❌ 错误：new Function 也被禁止
 new Function('console.log("test")')();
 
-// ❌ 错误：importScripts 不支持 module 类型
-importScripts(chrome.runtime.getURL('test-rpc.js'));
-// TypeError: Module scripts don't support importScripts()
+// ❌ 错误：import() 在 Service Worker 中被禁止
+await import(chrome.runtime.getURL('test-rpc.js'));
+// TypeError: import() is disallowed on ServiceWorkerGlobalScope
 ```
 
-## ✅ 为什么要用 import()？
+## ✅ 为什么用 importScripts()？
 
-我们的 Service Worker 配置是：
+**Service Worker 的限制：**
+- ❌ `eval()` - CSP 策略禁止
+- ❌ `import()` - HTML 规范禁止（Service Worker 不支持）
+- ✅ `importScripts()` - **唯一可用的方法**
+
+**我们的配置（已修复）：**
 ```json
 {
   "background": {
-    "service_worker": "background.js",
-    "type": "module"    ← 这个导致不能用 importScripts()
+    "service_worker": "background.js"
+    // 不使用 "type": "module" - 那会禁止 importScripts()
   }
 }
 ```
 
-**Module 类型的 Service Worker：**
-- ✅ 支持 `import()` (动态导入)
-- ✅ 支持 `import ... from` (静态导入)
-- ❌ **不支持** `importScripts()` (旧 API)
-- ❌ **不支持** `eval()` (CSP 限制)
-
 **正确方法：**
 ```javascript
-// ✅ 动态 import (异步)
-await import(chrome.runtime.getURL('test-rpc.js'));
-
-// ✅ 或带回调
-import(chrome.runtime.getURL('test-rpc.js')).then(() => {
-  testAllRPC();
-});
+// ✅ 使用 importScripts (标准 Service Worker API)
+importScripts(chrome.runtime.getURL('test-rpc.js'));
 ```
 
 ## 📊 预期输出
