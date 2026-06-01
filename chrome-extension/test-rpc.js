@@ -324,14 +324,14 @@ async function testPollStudio() {
  * Helper: Call RPC with proper error handling
  *
  * When running in Service Worker context (loaded via importScripts),
- * directly call makeRPCCall instead of using chrome.runtime.sendMessage
+ * directly call callRpc instead of using chrome.runtime.sendMessage
  */
 async function callRPC(rpcName, params) {
-  // Check if we're in Service Worker context with makeRPCCall available
-  if (typeof makeRPCCall === 'function') {
+  // Check if we're in Service Worker context with callRpc available
+  if (typeof callRpc === 'function') {
     // Direct call - we're running in background.js context
     try {
-      const result = await makeRPCCall(rpcName, params);
+      const result = await callRpc(rpcName, params);
       return result;
     } catch (error) {
       throw new Error(error.message || 'RPC call failed');
