@@ -46,5 +46,11 @@
       "https://*.vercel.app/*",
       "https://web-ezcat207s-projects.vercel.app/*"
     ]
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["test-rpc.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
