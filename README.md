@@ -3,7 +3,8 @@
 > 批量导入导出 NotebookLM 内容，无需安装任何命令行工具。只需安装 Chrome 插件，打开网页即可开始。
 
 🔗 **GitHub**: https://github.com/ezcat207/notebooklm-web
-🚀 **状态**: ✅ MVP 完成，已测试可用
+🌐 **在线 Demo**: https://web-ezcat207s-projects.vercel.app
+🚀 **状态**: ✅ MVP 完成，已部署到 Vercel
 
 ## 项目概述
 

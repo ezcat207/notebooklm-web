@@ -19,7 +19,11 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://localhost:*/*", "https://*.vercel.app/*"],
+      "matches": [
+        "http://localhost:*/*",
+        "https://*.vercel.app/*",
+        "https://web-ezcat207s-projects.vercel.app/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_start"
     }
@@ -40,7 +44,8 @@
   "externally_connectable": {
     "matches": [
       "http://localhost:*/*",
-      "https://*.vercel.app/*"
+      "https://*.vercel.app/*",
+      "https://web-ezcat207s-projects.vercel.app/*"
     ]
   }
 }

@@ -100,8 +100,7 @@ async function listNotebooks() {
  * Open web app
  */
 function openWebApp() {
-  // TODO: Replace with actual web app URL
-  chrome.tabs.create({ url: "http://localhost:3000" });
+  chrome.tabs.create({ url: "https://web-ezcat207s-projects.vercel.app" });
   window.close();
 }
 
